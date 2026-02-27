@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  PROVIDER
+  ADMIN
+}
+
+enum VerificationStatus {
+  PENDING_VERIFICATION
+  DOCUMENT_REQUESTED
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum RequestStatus {
+  CREATED
+  ASSIGNED
+  APPROVED
+  IN_TRANSIT
+  DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+enum DisputeStatus {
+  OPEN
+  RESOLVED
+  REJECTED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?
+  image         String?
+  phone         String?
+  role          Role      @default(CUSTOMER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  providerProfile ProviderProfile?
+  customerRequests WaterRequest[] @relation("CustomerRequests")
+  providerRequests WaterRequest[] @relation("ProviderRequests")
+  givenRatings     Rating[]       @relation("CustomerRatings")
+  receivedRatings  Rating[]       @relation("ProviderRatings")
+  notifications    Notification[]
+  raisedDisputes   Dispute[]      @relation("RaisedDisputes")
+}
+
+model ProviderProfile {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pricePerLiter      Float
+  location           String
+  isAvailable        Boolean            @default(false)
+  verificationStatus VerificationStatus @default(PENDING_VERIFICATION)
+  ratingAverage      Float              @default(0.0)
+  totalRatings       Int                @default(0)
+  documents          String[]           // URLs to uploaded verification documents
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+}
+
+model WaterRequest {
+  id               String        @id @default(cuid())
+  customerId       String
+  customer         User          @relation("CustomerRequests", fields: [customerId], references: [id], onDelete: Cascade)
+  providerId       String?
+  provider         User?         @relation("ProviderRequests", fields: [providerId], references: [id], onDelete: SetNull)
+  quantity         Float         // in liters
+  requestedBudget  Float
+  finalPrice       Float?
+  commissionAmount Float?
+  status           RequestStatus @default(CREATED)
+  
+  rating           Rating?
+  disputes         Dispute[]
+
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}
+
+model Rating {
+  id             String       @id @default(cuid())
+  waterRequestId String       @unique
+  waterRequest   WaterRequest @relation(fields: [waterRequestId], references: [id], onDelete: Cascade)
+  customerId     String
+  customer       User         @relation("CustomerRatings", fields: [customerId], references: [id], onDelete: Cascade)
+  providerId     String
+  provider       User         @relation("ProviderRatings", fields: [providerId], references: [id], onDelete: Cascade)
+  rating         Int          // 1 to 5
+  review         String?
+  createdAt      DateTime     @default(now())
+}
+
+model Notification {
+  id         String   @id @default(cuid())
+  receiverId String
+  receiver   User     @relation(fields: [receiverId], references: [id], onDelete: Cascade)
+  message    String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model Dispute {
+  id             String        @id @default(cuid())
+  waterRequestId String
+  waterRequest   WaterRequest  @relation(fields: [waterRequestId], references: [id], onDelete: Cascade)
+  raisedById     String
+  raisedBy       User          @relation("RaisedDisputes", fields: [raisedById], references: [id], onDelete: Cascade)
+  reason         String
+  status         DisputeStatus @default(OPEN)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
