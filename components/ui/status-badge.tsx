@@ -12,8 +12,9 @@ type Status =
   | "DELIVERED"
   | "COMPLETED"
   | "CANCELLED"
-  | "OPEN"
-  | "RESOLVED";
+  | "OPEN" 
+  | "RESOLVED"
+  | "DISPUTED";
 
 const statusConfig: Record<Status, { label: string; variant: "default" | "secondary" | "destructive" | "outline" | "success" | "warning" }> = {
   PENDING_VERIFICATION: { label: "Pending", variant: "warning" },
@@ -31,6 +32,7 @@ const statusConfig: Record<Status, { label: string; variant: "default" | "second
   
   OPEN: { label: "Open", variant: "warning" },
   RESOLVED: { label: "Resolved", variant: "success" },
+  DISPUTED: { label: "Disputed", variant: "destructive" },
 };
 
 // Assuming we add custom variants to Badge in our Tailwind config, 

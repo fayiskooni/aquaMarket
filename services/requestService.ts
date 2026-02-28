@@ -28,10 +28,12 @@ export async function acceptRequest(
       throw new Error("Request cannot be accepted in its current state");
     }
 
-    const providerRecord = await tx.user.findUnique({
+    const provider = await tx.user.findUnique({
       where: { id: providerUserId },
-      select: { name: true },
+      include: { providerProfile: true },
     });
+
+    const calculatedPrice = request.quantity * (provider?.providerProfile?.pricePerLiter || 0);
 
     // Update the request with the provider and change status atomically
     await tx.waterRequest.update({
@@ -39,6 +41,7 @@ export async function acceptRequest(
       data: {
         providerId: providerUserId,
         status: RequestStatus.ASSIGNED,
+        finalPrice: calculatedPrice,
       },
     });
 
@@ -46,7 +49,7 @@ export async function acceptRequest(
     await tx.notification.create({
       data: {
         receiverId: request.customerId,
-        message: `Your request for ${request.quantity}L has been accepted by ${providerRecord?.name || 'a provider'}`,
+        message: `Your request for ${request.quantity}L has been accepted by ${provider?.name || 'a provider'}`,
         type: "REQUEST_ACCEPTED",
         link: "/dashboard/user/requests",
       } as any,
@@ -73,9 +76,22 @@ export async function updateRequestStatus(
   if (!request) throw new Error("Request not found");
   if (request.providerId !== providerUserId) throw new Error("Unauthorized");
 
+  let financialUpdate = {};
+  if (newStatus === "COMPLETED") {
+    const basePrice = request.finalPrice || request.requestedBudget || 0;
+    const commission = basePrice * 0.05; // 5% Admin Commission
+    financialUpdate = { 
+      commissionAmount: commission,
+      finalPrice: basePrice // Ensure finalPrice is never zero if budget exists
+    };
+  }
+
   await prisma.waterRequest.update({
     where: { id: requestId },
-    data: { status: newStatus }
+    data: { 
+      status: newStatus,
+      ...financialUpdate
+    }
   });
 
   // Notify customer of status change

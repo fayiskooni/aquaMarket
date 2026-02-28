@@ -24,6 +24,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
 
+    let calculatedPrice = null;
+    if (parsed.data.providerId) {
+      const providerProfile = await prisma.providerProfile.findUnique({
+        where: { userId: parsed.data.providerId },
+        select: { pricePerLiter: true }
+      });
+      calculatedPrice = parsed.data.quantity * (providerProfile?.pricePerLiter || 0);
+    }
+
     const newRequest = await prisma.waterRequest.create({
       data: {
         customerId: session.user.id,
@@ -31,6 +40,7 @@ export async function POST(request: Request) {
         quantity: parsed.data.quantity,
         requestedBudget: parsed.data.requestedBudget,
         status: parsed.data.providerId ? "ASSIGNED" : "CREATED",
+        finalPrice: calculatedPrice,
       },
     });
 

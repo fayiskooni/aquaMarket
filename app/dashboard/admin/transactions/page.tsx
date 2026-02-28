@@ -60,10 +60,10 @@ export default async function AdminTransactionsPage() {
                       <td className="p-4 align-middle">{transaction.customer?.name || "Unknown"}</td>
                       <td className="p-4 align-middle">{transaction.provider?.name || "Unknown"}</td>
                       <td className="p-4 align-middle text-right font-medium">
-                        ${transaction.finalPrice?.toFixed(2) || "0.00"}
+                        ₹{(transaction.finalPrice || transaction.requestedBudget || 0).toFixed(2)}
                       </td>
-                      <td className="p-4 align-middle text-right text-green-600">
-                        +${transaction.commissionAmount?.toFixed(2) || "0.00"}
+                      <td className="p-4 align-middle text-right text-green-600 font-bold">
+                        +₹{(transaction.commissionAmount || ((transaction.finalPrice || transaction.requestedBudget || 0) * 0.05)).toFixed(2)}
                       </td>
                     </tr>
                   ))}

@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { Droplets, DollarSign, Star, TrendingUp } from "lucide-react";
+import { Droplets, IndianRupee, Star, TrendingUp } from "lucide-react";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -31,7 +31,7 @@ export default async function ProviderDashboard() {
         providerId: userId,
         status: "COMPLETED"
       },
-      select: { finalPrice: true }
+      select: { finalPrice: true, requestedBudget: true }
     }),
     prisma.waterRequest.findMany({
       where: { providerId: userId },
@@ -56,64 +56,79 @@ export default async function ProviderDashboard() {
   const availableRequests = results[4];
 
 
-  const totalEarnings = completedJobs.reduce((sum, req) => sum + (req.finalPrice || 0), 0);
+  const totalEarnings = completedJobs.reduce((sum, req) => sum + (req.finalPrice || req.requestedBudget || 0), 0);
   const completedCount = completedJobs.length;
   const isAvailable = profile?.isAvailable || false;
   const verificationStatus = profile?.verificationStatus || "PENDING_VERIFICATION";
   const avgRating = profile?.ratingAverage?.toFixed(1) || "0.0";
   const totalRatings = profile?.totalRatings || 0;
 
+  const cancelledCount = await prisma.waterRequest.count({
+    where: { providerId: userId, status: "CANCELLED" }
+  });
+
+  const pendingEarnings = await prisma.waterRequest.aggregate({
+    where: { 
+      providerId: userId, 
+      status: { in: ["ASSIGNED", "APPROVED", "IN_TRANSIT", "DELIVERED"] } 
+    },
+    _sum: { finalPrice: true }
+  });
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Provider Dashboard</h1>
-          <p className="text-muted-foreground">Manage your orders and track earnings.</p>
+          <h1 className="text-4xl font-black tracking-tight text-gray-900">Provider Console</h1>
+          <p className="text-muted-foreground font-medium mt-1">Track your performance, earnings, and active delivery fleet.</p>
         </div>
-        <div>
+        <div className="group transition-transform hover:scale-110 duration-500">
           <StatusBadge status={verificationStatus} />
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="border-none shadow-2xl shadow-blue-500/10 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-[2rem] overflow-hidden group">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-xs font-black uppercase tracking-widest opacity-80">Wallet Balance</CardTitle>
+            <IndianRupee className="h-5 w-5 opacity-50 group-hover:rotate-12 transition-transform" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹{totalEarnings.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Lifetime revenue</p>
+            <div className="text-3xl font-black antialiased">₹{totalEarnings.toFixed(2)}</div>
+            <p className="text-[10px] uppercase font-bold opacity-60 mt-2 tracking-tighter">Fulfilled {completedCount} Deliveries</p>
           </CardContent>
         </Card>
-        <Card>
+
+        <Card className="border-none shadow-xl bg-white rounded-[2rem] overflow-hidden border-b-4 border-b-orange-500/20">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Active Jobs</CardTitle>
-            <Droplets className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-xs font-black uppercase tracking-widest text-gray-400">In Progress</CardTitle>
+            <Droplets className="h-5 w-5 text-orange-500 opacity-50" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{activeJobsCount}</div>
-            <p className="text-xs text-muted-foreground">Currently assigned or in transit</p>
+            <div className="text-3xl font-black text-gray-900">{activeJobsCount}</div>
+            <p className="text-[10px] uppercase font-bold text-orange-600/60 mt-2 tracking-tighter">Est. Value: ₹{pendingEarnings._sum.finalPrice || 0}</p>
           </CardContent>
         </Card>
-        <Card>
+
+        <Card className="border-none shadow-xl bg-white rounded-[2rem] overflow-hidden border-b-4 border-b-red-500/20">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Completed Deliveries</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-xs font-black uppercase tracking-widest text-gray-400">Cancelled</CardTitle>
+            <TrendingUp className="h-5 w-5 text-red-500 opacity-50 -rotate-90" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{completedCount}</div>
-            <p className="text-xs text-muted-foreground">Successfully fulfilled</p>
+            <div className="text-3xl font-black text-gray-900">{cancelledCount}</div>
+            <p className="text-[10px] uppercase font-bold text-red-600/60 mt-2 tracking-tighter">Failed or Revoked</p>
           </CardContent>
         </Card>
-        <Card>
+
+        <Card className="border-none shadow-xl bg-white rounded-[2rem] overflow-hidden border-b-4 border-b-yellow-500/20">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Average Rating</CardTitle>
-            <Star className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-xs font-black uppercase tracking-widest text-gray-400">Trust Score</CardTitle>
+            <Star className="h-5 w-5 text-yellow-500 opacity-50" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{avgRating}</div>
-            <p className="text-xs text-muted-foreground">From {totalRatings} reviews</p>
+            <div className="text-3xl font-black text-gray-900">{avgRating}</div>
+            <p className="text-[10px] uppercase font-bold text-yellow-600/60 mt-2 tracking-tighter">From {totalRatings} Customers</p>
           </CardContent>
         </Card>
       </div>

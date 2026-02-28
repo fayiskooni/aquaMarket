@@ -31,7 +31,7 @@ export default async function CustomerDashboard() {
     // Index 2: completedRequests
     prisma.waterRequest.findMany({
       where: { customerId: userId, status: "COMPLETED" },
-      select: { finalPrice: true }
+      select: { finalPrice: true, requestedBudget: true, quantity: true }
     }),
     // Index 3: ratingsGiven
     prisma.rating.aggregate({
@@ -66,7 +66,9 @@ export default async function CustomerDashboard() {
   const recentRequests = results[4] as any[];
   const providerStats = results[5] as any[];
 
-  const totalSpent = completedRequests.reduce((sum, req) => sum + (req.finalPrice || 0), 0);
+  // Use requestedBudget as fallback if finalPrice is missing
+  const totalSpent = completedRequests.reduce((sum, req) => sum + (req.finalPrice || req.requestedBudget || 0), 0);
+  const totalLiters = completedRequests.reduce((sum, req) => sum + (req.quantity || 0), 0);
   const avgRating = ratingsGiven._avg.rating?.toFixed(1) || "0.0";
   const ratingCount = ratingsGiven._count.rating || 0;
 
@@ -85,51 +87,54 @@ export default async function CustomerDashboard() {
 
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back! Here's an overview of your water supply.</p>
+        <h1 className="text-4xl font-black tracking-tight text-gray-900">Consumer Panel</h1>
+        <p className="text-muted-foreground font-medium mt-1">Manage your water supply and track delivery performance.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="border-none shadow-2xl shadow-blue-500/10 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-[2rem] overflow-hidden group">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Active Requests</CardTitle>
-            <Droplets className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-xs font-black uppercase tracking-widest opacity-80">Total Liters</CardTitle>
+            <Droplets className="h-5 w-5 opacity-50 group-hover:animate-bounce" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{activeRequestsCount}</div>
-            <p className="text-xs text-muted-foreground">Currently in progress</p>
+            <div className="text-3xl font-black antialiased">{totalLiters.toLocaleString()} L</div>
+            <p className="text-[10px] uppercase font-bold opacity-60 mt-2 tracking-tighter">Across {totalOrdersCount} Deliveries</p>
           </CardContent>
         </Card>
-        <Card>
+
+        <Card className="border-none shadow-xl bg-white rounded-[2rem] overflow-hidden border-b-4 border-b-blue-500/20">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-            <History className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-xs font-black uppercase tracking-widest text-gray-400">Total Expenditure</CardTitle>
+            <TrendingUp className="h-5 w-5 text-blue-500 opacity-50" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalOrdersCount}</div>
-            <p className="text-xs text-muted-foreground">Lifetime orders</p>
+            <div className="text-3xl font-black text-gray-900">₹{totalSpent.toFixed(2)}</div>
+            <p className="text-[10px] uppercase font-bold text-blue-600/60 mt-2 tracking-tighter">Paid via Cash/Wallet</p>
           </CardContent>
         </Card>
-        <Card>
+
+        <Card className="border-none shadow-xl bg-white rounded-[2rem] overflow-hidden border-b-4 border-b-orange-500/20">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-xs font-black uppercase tracking-widest text-gray-400">Active Pipeline</CardTitle>
+            <History className="h-5 w-5 text-orange-500 opacity-50" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹{totalSpent.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Lifetime expenditure</p>
+            <div className="text-3xl font-black text-gray-900">{activeRequestsCount}</div>
+            <p className="text-[10px] uppercase font-bold text-orange-600/60 mt-2 tracking-tighter">Pending Shipments</p>
           </CardContent>
         </Card>
-        <Card>
+
+        <Card className="border-none shadow-xl bg-white rounded-[2rem] overflow-hidden border-b-4 border-b-yellow-500/20">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Avg Rating Given</CardTitle>
-            <Star className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-xs font-black uppercase tracking-widest text-gray-400">Feedback Avg</CardTitle>
+            <Star className="h-5 w-5 text-yellow-500 opacity-50" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{avgRating}</div>
-            <p className="text-xs text-muted-foreground">Across {ratingCount} reviews</p>
+            <div className="text-3xl font-black text-gray-900">{avgRating}</div>
+            <p className="text-[10px] uppercase font-bold text-yellow-600/60 mt-2 tracking-tighter">Based on {ratingCount} Starred Jobs</p>
           </CardContent>
         </Card>
       </div>
