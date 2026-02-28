@@ -15,6 +15,8 @@ import {
 import { useSocket } from "@/components/providers/socket-provider";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
+import { X as CloseIcon } from "lucide-react";
 
 type Notification = {
   id: string;
@@ -31,6 +33,7 @@ export function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isClearingAll, setIsClearingAll] = useState(false);
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -86,6 +89,47 @@ export function NotificationBell() {
     }
   };
 
+  const removeIndividual = async (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Optimistic UI update
+    setNotifications(prev => prev.filter(n => n.id !== id));
+    const wasUnread = notifications.find(n => n.id === id)?.isRead === false;
+    if (wasUnread) setUnreadCount(prev => Math.max(0, prev - 1));
+
+    try {
+      await fetch(`/api/notifications?id=${id}`, {
+        method: "DELETE",
+      });
+    } catch (err) {
+      console.error(err);
+      fetchNotifications(); // Rollback if error
+    }
+  };
+
+  const clearNotifications = async () => {
+    try {
+      if (notifications.length === 0) return;
+      
+      setIsClearingAll(true);
+      
+      // Wait for animation delay (matching the sequenced delay)
+      setTimeout(() => {
+        setNotifications([]);
+        setUnreadCount(0);
+        setIsClearingAll(false);
+      }, notifications.length * 100 + 300);
+      
+      await fetch("/api/notifications", {
+        method: "DELETE",
+      });
+    } catch (err) {
+      console.error(err);
+      setIsClearingAll(false);
+    }
+  };
+
   const getDisplayCount = () => {
     if (unreadCount === 0) return null;
     const role = session?.user?.role;
@@ -121,7 +165,7 @@ export function NotificationBell() {
           {unreadCount > 0 && <span className="text-[11px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">{unreadCount} New</span>}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 overflow-y-auto custom-scrollbar overflow-x-hidden">
           {loading ? (
             <div className="flex flex-col items-center justify-center p-8 gap-2">
               <Loader2 className="h-6 w-6 text-blue-500 animate-spin" />
@@ -139,32 +183,65 @@ export function NotificationBell() {
             </div>
           ) : (
             <div className="py-1">
-              {notifications.map((n) => (
-                <DropdownMenuItem key={n.id} className={cn(
-                  "flex flex-col items-start gap-1 p-3 cursor-pointer rounded-lg mx-1 transition-colors",
-                  !n.isRead ? "bg-blue-50/50 hover:bg-blue-50" : "hover:bg-muted/50"
-                )} asChild>
-                  <Link href={n.link || "#"}>
-                    <div className="flex justify-between w-full">
-                      <span className={cn(
-                        "text-[13px] leading-tight flex-1",
-                        !n.isRead ? "font-semibold text-gray-900" : "text-gray-600"
-                      )}>
-                        {n.message}
-                      </span>
-                      {!n.isRead && <div className="h-2 w-2 rounded-full bg-blue-600 mt-1 shrink-0 ml-2" />}
-                    </div>
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
-                      {new Date(n.createdAt).toLocaleDateString()} at {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </Link>
-                </DropdownMenuItem>
-              ))}
+              <AnimatePresence mode="popLayout">
+                {notifications.map((n, index) => (
+                  <motion.div
+                    key={n.id}
+                    layout
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={isClearingAll ? { 
+                      opacity: 0, 
+                      x: 200, 
+                      transition: { delay: index * 0.1, duration: 0.5, ease: "easeInOut" } 
+                    } : { 
+                      opacity: 1, 
+                      x: 0 
+                    }}
+                    exit={{ opacity: 0, x: 200, transition: { duration: 0.3 } }}
+                    className="relative group pr-8"
+                  >
+                    <DropdownMenuItem className={cn(
+                      "flex flex-col items-start gap-1 p-3 cursor-pointer rounded-lg mx-1 transition-colors relative",
+                      !n.isRead ? "bg-blue-50/50 hover:bg-blue-50" : "hover:bg-muted/50"
+                    )} asChild>
+                      <Link href={n.link || "#"}>
+                        <div className="flex justify-between w-full">
+                          <span className={cn(
+                            "text-[13px] leading-tight flex-1 pr-2",
+                            !n.isRead ? "font-semibold text-gray-900" : "text-gray-600"
+                          )}>
+                            {n.message}
+                          </span>
+                          {!n.isRead && <div className="h-2 w-2 rounded-full bg-blue-600 mt-1 shrink-0 ml-1" />}
+                        </div>
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+                          {new Date(n.createdAt).toLocaleDateString()} at {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={(e) => removeIndividual(n.id, e)}
+                      className="h-6 w-6 absolute right-2 top-1.5 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-50 transition-all rounded-full p-0.5 z-10"
+                      title="Remove notification"
+                    >
+                      <CloseIcon className="h-3.5 w-3.5" />
+                    </Button>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
           )}
         </div>
         <DropdownMenuSeparator />
-        <Button variant="ghost" size="sm" className="w-full text-blue-600 text-xs font-semibold py-2 rounded-lg hover:bg-blue-50">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={clearNotifications} 
+          disabled={notifications.length === 0 || isClearingAll}
+          className="w-full text-blue-600 text-xs font-semibold py-2 rounded-lg hover:bg-blue-50 disabled:opacity-50"
+        >
           <CheckCheck className="h-3 w-3 mr-2" />
           Clear all
         </Button>

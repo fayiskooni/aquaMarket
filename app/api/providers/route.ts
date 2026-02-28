@@ -16,6 +16,7 @@ export async function GET(request: Request) {
         role: "PROVIDER",
         providerProfile: {
           verificationStatus: "APPROVED",
+          isAvailable: true,
         },
       },
       include: {

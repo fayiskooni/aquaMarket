@@ -11,7 +11,8 @@ import {
   Settings, 
   Users, 
   FileText, 
-  AlertCircle 
+  AlertCircle,
+  Banknote
 } from "lucide-react";
 
 export function Sidebar() {
@@ -30,6 +31,7 @@ export function Sidebar() {
       { name: "Dashboard", href: "/dashboard/provider", icon: LayoutDashboard },
       { name: "Active Jobs", href: "/dashboard/provider/jobs", icon: Droplets },
       { name: "Earnings", href: "/dashboard/provider/earnings", icon: FileText },
+      { name: "Pricing & Availability", href: "/dashboard/provider/pricing", icon: Banknote },
       { name: "Profile", href: "/dashboard/provider/profile", icon: Settings },
     ],
     ADMIN: [
