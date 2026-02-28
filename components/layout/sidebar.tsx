@@ -43,15 +43,15 @@ export function Sidebar() {
   const navLinks = role ? links[role as keyof typeof links] || [] : [];
 
   return (
-    <div className="flex min-h-screen w-64 flex-col border-r bg-muted/20 flex-shrink-0">
-      <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-        <Link href="/" className="flex items-center gap-2 font-semibold">
-          <Droplets className="h-6 w-6 text-blue-600" />
-          <span className="text-lg">AquaMarket</span>
+    <div className="flex h-full w-64 flex-col border-r bg-white flex-shrink-0">
+      <div className="flex h-14 items-center border-b px-4 lg:px-6">
+        <Link href="/" className="flex items-center gap-2 font-bold text-blue-600">
+          <Droplets className="h-6 w-6" />
+          <span className="text-xl tracking-tight">AquaMarket</span>
         </Link>
       </div>
-      <div className="flex-1 py-4">
-        <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+      <div className="flex-1 py-6 overflow-y-auto">
+        <nav className="grid items-start gap-1 px-4 text-sm font-medium">
           {navLinks.map((link) => {
             const Icon = link.icon;
             const isActive = pathname === link.href;

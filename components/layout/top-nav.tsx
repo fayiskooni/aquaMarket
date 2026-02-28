@@ -18,7 +18,7 @@ export function TopNav() {
   const { data: session } = useSession();
 
   return (
-    <header className="flex h-14 lg:h-[60px] items-center gap-4 border-b bg-muted/20 px-4 lg:px-6 justify-between">
+    <header className="flex h-14 lg:h-16 items-center gap-4 border-b bg-white px-4 lg:px-8 justify-between sticky top-0 z-10">
       <div className="flex-1" />
       <div className="flex items-center gap-4">
         <NotificationBell />

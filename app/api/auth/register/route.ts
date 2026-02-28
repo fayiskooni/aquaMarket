@@ -57,16 +57,26 @@ export async function POST(request: Request) {
         where: { role: "ADMIN" }
       });
 
-      if (admins.length > 0) {
-        await prisma.notification.createMany({
-          data: admins.map(admin => ({
+      for (const admin of admins) {
+        await prisma.notification.create({
+          data: {
             receiverId: admin.id,
-            message: `New provider signup: ${name}. Pending verification.`,
+            message: `New provider registration: ${name}. Click to verify.`,
             type: "NEW_SIGNUP",
             link: "/dashboard/admin/providers",
-          })) as any
+          } as any
         });
       }
+
+      // Notify the provider
+      await prisma.notification.create({
+        data: {
+          receiverId: user.id,
+          message: `Welcome ${name}! Your profile is pending admin verification.`,
+          type: "WELCOME_PROVIDER",
+          link: "/dashboard/provider/profile",
+        } as any
+      });
     }
 
     return NextResponse.json(
