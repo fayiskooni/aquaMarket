@@ -51,6 +51,22 @@ export async function POST(request: Request) {
           location: "Not set",
         },
       });
+
+      // Notify all admins
+      const admins = await prisma.user.findMany({
+        where: { role: "ADMIN" }
+      });
+
+      if (admins.length > 0) {
+        await prisma.notification.createMany({
+          data: admins.map(admin => ({
+            receiverId: admin.id,
+            message: `New provider signup: ${name}. Pending verification.`,
+            type: "NEW_SIGNUP",
+            link: "/dashboard/admin/providers",
+          })) as any
+        });
+      }
     }
 
     return NextResponse.json(

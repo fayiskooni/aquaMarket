@@ -41,9 +41,9 @@ export default async function UserRequestsPage() {
                   <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Date</th>
                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Provider</th>
-                    <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">Quantity (L)</th>
-                    <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">Budget</th>
-                    <th className="h-12 px-4 align-middle font-medium text-muted-foreground">Status</th>
+                    <th className="h-12 px-4 text-center align-middle font-medium text-muted-foreground">Quantity (L)</th>
+                    <th className="h-12 px-4 text-center align-middle font-medium text-muted-foreground">Budget</th>
+                    <th className="h-12 px-4 text-center align-middle font-medium text-muted-foreground">Status</th>
                   </tr>
                 </thead>
                 <tbody className="[&_tr:last-child]:border-0">
@@ -51,9 +51,9 @@ export default async function UserRequestsPage() {
                     <tr key={request.id} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
                       <td className="p-4 align-middle">{new Date(request.createdAt).toLocaleDateString()}</td>
                       <td className="p-4 align-middle">{request.provider?.name || "Pending Assignment"}</td>
-                      <td className="p-4 align-middle text-right font-medium">{request.quantity}L</td>
-                      <td className="p-4 align-middle text-right">${request.finalPrice || request.requestedBudget}</td>
-                      <td className="p-4 align-middle">
+                      <td className="p-4 align-middle text-center font-medium">{request.quantity}L</td>
+                      <td className="p-4 align-middle text-center">₹{request.finalPrice || request.requestedBudget}</td>
+                      <td className="p-4 align-middle text-center">
                         <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-blue-100 text-blue-800">
                           {request.status}
                         </span>

@@ -11,7 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bell, User } from "lucide-react";
+import { User } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export function TopNav() {
   const { data: session } = useSession();
@@ -20,10 +21,7 @@ export function TopNav() {
     <header className="flex h-14 lg:h-[60px] items-center gap-4 border-b bg-muted/20 px-4 lg:px-6 justify-between">
       <div className="flex-1" />
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" className="h-8 w-8 rounded-full">
-          <Bell className="h-4 w-4" />
-          <span className="sr-only">Toggle notifications</span>
-        </Button>
+        <NotificationBell />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">

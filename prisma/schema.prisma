@@ -110,6 +110,8 @@ model Notification {
   receiverId String
   receiver   User     @relation(fields: [receiverId], references: [id], onDelete: Cascade)
   message    String
+  type       String?  // e.g., "REQUEST_ACCEPTED", "NEW_SIGNUP", "DISPUTE"
+  link       String?  // Deep link to the relevant page
   isRead     Boolean  @default(false)
   createdAt  DateTime @default(now())
 }

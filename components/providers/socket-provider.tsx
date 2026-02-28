@@ -25,9 +25,12 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     // Only connect if we have a user, or depending on requirements you can connect universally
-    const socketInstance = new (ClientIO as any)({
-      path: "/socket.io/",
-      addTrailingSlash: false,
+    const socketInstance = ClientIO({
+      path: "/socket.io",
+      transports: ["websocket"],
+      autoConnect: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
     });
 
     socketInstance.on("connect", () => {

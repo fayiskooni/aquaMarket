@@ -43,7 +43,7 @@ export function Sidebar() {
   const navLinks = role ? links[role as keyof typeof links] || [] : [];
 
   return (
-    <div className="flex h-full w-64 flex-col border-r bg-muted/20">
+    <div className="flex min-h-screen w-64 flex-col border-r bg-muted/20 flex-shrink-0">
       <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
         <Link href="/" className="flex items-center gap-2 font-semibold">
           <Droplets className="h-6 w-6 text-blue-600" />

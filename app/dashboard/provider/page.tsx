@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { AcceptJobButton } from "@/components/AcceptJobButton";
 
 export default async function ProviderDashboard() {
   const session = await getServerSession(authOptions);
@@ -15,12 +16,7 @@ export default async function ProviderDashboard() {
 
   const userId = session.user.id;
 
-  const [
-    profile,
-    activeJobsCount,
-    completedJobs,
-    recentJobs
-  ] = await Promise.all([
+  const results = await Promise.all([
     prisma.providerProfile.findUnique({
       where: { userId }
     }),
@@ -42,8 +38,23 @@ export default async function ProviderDashboard() {
       orderBy: { createdAt: 'desc' },
       take: 5,
       include: { customer: true }
+    }),
+    prisma.waterRequest.findMany({
+      where: { 
+        status: "CREATED",
+        providerId: null
+      },
+      include: { customer: true },
+      orderBy: { createdAt: 'desc' }
     })
   ]);
+
+  const profile = results[0];
+  const activeJobsCount = results[1];
+  const completedJobs = results[2];
+  const recentJobs = results[3];
+  const availableRequests = results[4];
+
 
   const totalEarnings = completedJobs.reduce((sum, req) => sum + (req.finalPrice || 0), 0);
   const completedCount = completedJobs.length;
@@ -71,7 +82,7 @@ export default async function ProviderDashboard() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalEarnings.toFixed(2)}</div>
+            <div className="text-2xl font-bold">₹{totalEarnings.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">Lifetime revenue</p>
           </CardContent>
         </Card>
@@ -107,6 +118,40 @@ export default async function ProviderDashboard() {
         </Card>
       </div>
 
+
+      {verificationStatus === "APPROVED" && availableRequests.length > 0 && (
+        <Card className="border-blue-200 bg-blue-50/50">
+          <CardHeader>
+            <CardTitle className="text-blue-700 flex items-center gap-2">
+              <Droplets className="h-5 w-5" />
+              Available Jobs (Broadcast)
+            </CardTitle>
+            <CardDescription>First provider to accept these jobs gets assigned.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {availableRequests.map((req: any) => (
+                <Card key={req.id} className="bg-white">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-bold text-lg">{req.quantity} L</p>
+                        <p className="text-sm text-muted-foreground">From {req.customer?.name || "Customer"}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-green-600">₹{req.requestedBudget}</p>
+                        <p className="text-[10px] text-muted-foreground">Budgeted Price</p>
+                      </div>
+                    </div>
+                    <AcceptJobButton requestId={req.id} />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4">
           <CardHeader>
@@ -131,7 +176,7 @@ export default async function ProviderDashboard() {
                       </p>
                     </div>
                     <div className="flex items-center gap-4">
-                      <div className="font-medium">${job.finalPrice || job.requestedBudget}</div>
+                      <div className="font-medium">₹{job.finalPrice || job.requestedBudget}</div>
                       <StatusBadge status={job.status} />
                     </div>
                   </div>

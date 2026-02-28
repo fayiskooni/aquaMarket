@@ -34,6 +34,17 @@ export async function POST(request: Request) {
       },
     });
 
+    if (parsed.data.providerId) {
+      await prisma.notification.create({
+        data: {
+          receiverId: parsed.data.providerId,
+          message: `New direct request for ${parsed.data.quantity}L from ${session.user.name}`,
+          type: "DIRECT_REQUEST",
+          link: "/dashboard/provider/jobs",
+        } as any,
+      });
+    }
+
     // We rely on the client to emit the socket.io event after a successful response
     return NextResponse.json(newRequest, { status: 201 });
   } catch (error) {
@@ -50,7 +61,7 @@ export async function GET(request: Request) {
     }
 
     const role = session.user.role;
-    let requests = [];
+    let requests: any[] = [];
 
     if (role === "CUSTOMER") {
       requests = await prisma.waterRequest.findMany({

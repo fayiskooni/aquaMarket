@@ -1,9 +1,11 @@
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Droplets, History, Star, TrendingUp } from "lucide-react";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 export default async function CustomerDashboard() {
   const session = await getServerSession(authOptions);
@@ -14,60 +16,61 @@ export default async function CustomerDashboard() {
 
   const userId = session.user.id;
 
-  const [
-    activeRequestsCount,
-    totalOrdersCount,
-    completedRequests,
-    ratingsGiven,
-    recentRequests
-  ] = await Promise.all([
+  const results = await Promise.all([
+    // Index 0: activeRequestsCount
     prisma.waterRequest.count({
       where: {
         customerId: userId,
         status: { notIn: ["COMPLETED", "CANCELLED"] },
       }
     }),
+    // Index 1: totalOrdersCount
     prisma.waterRequest.count({
-      where: {
-        customerId: userId,
-      }
+      where: { customerId: userId }
     }),
+    // Index 2: completedRequests
     prisma.waterRequest.findMany({
-      where: {
-        customerId: userId,
-        status: "COMPLETED",
-      },
+      where: { customerId: userId, status: "COMPLETED" },
       select: { finalPrice: true }
     }),
+    // Index 3: ratingsGiven
     prisma.rating.aggregate({
       where: { customerId: userId },
       _avg: { rating: true },
       _count: { rating: true }
     }),
+    // Index 4: recentRequests
     prisma.waterRequest.findMany({
       where: { customerId: userId },
       orderBy: { createdAt: 'desc' },
       take: 5,
       include: { provider: true }
+    }),
+    // Index 5: providerStats (for favorites)
+    prisma.rating.groupBy({
+      by: ['providerId'],
+      where: { customerId: userId },
+      _avg: { rating: true },
+      _count: { providerId: true },
+      orderBy: {
+        _count: { providerId: 'desc' }
+      },
+      take: 3
     })
   ]);
+
+  const activeRequestsCount = results[0] as number;
+  const totalOrdersCount = results[1] as number;
+  const completedRequests = results[2] as any[];
+  const ratingsGiven = results[3] as any;
+  const recentRequests = results[4] as any[];
+  const providerStats = results[5] as any[];
 
   const totalSpent = completedRequests.reduce((sum, req) => sum + (req.finalPrice || 0), 0);
   const avgRating = ratingsGiven._avg.rating?.toFixed(1) || "0.0";
   const ratingCount = ratingsGiven._count.rating || 0;
 
-  // Favorite providers (most interacted/rated)
-  const providerStats = await prisma.rating.groupBy({
-    by: ['providerId'],
-    where: { customerId: userId },
-    _avg: { rating: true },
-    _count: { providerId: true },
-    orderBy: {
-      _count: { providerId: 'desc' }
-    },
-    take: 3
-  });
-
+  // Favorite providers (fetch user names in parallel if needed, or already got via include?)
   const providerIds = providerStats.map(ps => ps.providerId);
   const favoriteProvidersData = await prisma.user.findMany({
     where: { id: { in: providerIds } },
@@ -76,8 +79,9 @@ export default async function CustomerDashboard() {
 
   const favoriteProviders = providerStats.map(ps => ({
     ...ps,
-    provider: favoriteProvidersData.find(p => p.id === ps.providerId)
+    provider: favoriteProvidersData.find(u => u.id === ps.providerId)
   }));
+
 
 
   return (
@@ -114,7 +118,7 @@ export default async function CustomerDashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalSpent.toFixed(2)}</div>
+            <div className="text-2xl font-bold">₹{totalSpent.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">Lifetime expenditure</p>
           </CardContent>
         </Card>
@@ -154,7 +158,7 @@ export default async function CustomerDashboard() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium">${req.finalPrice || req.requestedBudget}</p>
+                      <p className="font-medium">₹{req.finalPrice || req.requestedBudget}</p>
                       <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-blue-100 text-blue-800">
                         {req.status}
                       </span>
